@@ -133,11 +133,12 @@ hooloovoo.prototype = {
     },
     get_pixel_RGB: function(requested_led) {
         var current_led = 4 + (requested_led * 4)
-        var rgb_array = new Array();
-        rgb_array[0] = this.led_buffer[current_led+3] // Red
-        rgb_array[1] = this.led_buffer[current_led+2] // Green
-        rgb_array[2] = this.led_buffer[current_led+1] // Blue
-        return(rgb_array);
+        rgb = {
+          "r": this.led_buffer[current_led+3], // Red
+          "g": this.led_buffer[current_led+2], // Green
+          "b": this.led_buffer[current_led+1] // Blue
+        }
+        return(rgb);
     },
     clear: function() {
         if(this.debug) console.log("Hooloovoo: clearing strip. Turning off all pixels.");
