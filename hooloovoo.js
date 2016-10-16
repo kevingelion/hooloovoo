@@ -1,15 +1,15 @@
 // Special thanks to http://sonnycruz.blogspot.ca/2016/03/blynk-raspberry-pi-apa102-addressable.html for the inspiration
 /*
     Ok, so here's how I read how these things work.
-    
+
     APA102 LEDs use a BGR color scheme.
-    
+
     Start Frame     Brightness      Blue        Green       Red
     0000 (32 bits)  111 + 5bits     8 Bits      8 Bits      8 Bits  = 32 bits per LED
-    
+
     For brightness, it starts with 111, then 0-31 for brightness levels
     Then, led_bits are a bitstream that will be sent out via SPI
-    
+
     Everything goes into one array, we update the led location in the array with new color data, then push the whole array to the strip
 */
 var rpio = require('rpio');
@@ -34,8 +34,8 @@ function hooloovoo() {
 
 hooloovoo.prototype = {
     setup: function(num_led, clock_divider, debug) {
-        this.led_length = num_led; // The number of LEDs 
-        
+        this.led_length = num_led; // The number of LEDs
+
         this.led_bits = this.led_length * 4 + 8; // The number of LEDs *4 (BGRb + 4 start frame bits + 4 end frame bits
         this.led_buffer = new Buffer(this.led_bits);
         for (var i = 0; i < this.led_bits; i++) {
@@ -44,13 +44,12 @@ hooloovoo.prototype = {
         clock_divider = typeof clock_divider !== 'undefined' ? clock_divider : 128; // Thanks @tearne
         if(debug) {
             this.debug = true;
-            console.log("Hooloovoo: There are "+this.led_length+" Leds in the string")   
+            console.log("Hooloovoo: There are "+this.led_length+" Leds in the string")
         }
         // setup rpio SPI
         rpio.spiBegin();
         rpio.spiSetClockDivider(clock_divider);
         setup_complete = !setup_complete;
-        
     },
     set_clock: function(clock_divider) { // The argument is an even divisor of the base 250MHz rate ranging between 0 and 65536.
         rpio.spiSetClockDivider(clock_divider);
@@ -73,6 +72,24 @@ hooloovoo.prototype = {
         var BGRb = hex2rgb(hex).rgb; // Converts hex to RGB
         this.fill_BGRb(BGRb[2], BGRb[1], BGRb[0], 255); // Converts RGB to BGR
     },
+    // Fill strip with hex array
+    fill_array: function(array) {
+      if(this.debug) console.log('Hooloovoo: Filling strip with array of hex values')
+      if(array.length > this.led_length) {
+          console.log("Hooloovoo: Can't use an array with more values than LEDs - Array Length: " + array.length);
+          return false;
+      }
+      var current_led, BGRb;
+      for(var i=0; i < array.length; i++){
+        BGRb = hex2rgb(array[i]).rgb;
+        current_led = 4 + (i * 4);
+        this.led_buffer[current_led + 1] = BGRb[2] // Blue
+        this.led_buffer[current_led + 2] = BGRb[1] // Green
+        this.led_buffer[current_led + 3] = BGRb[0] // Red
+        this.led_buffer[current_led + 0] = 255 // Brightness
+      }
+      this.write_strip();
+    },
     // Set RGB Values
     set_pixel_RGB: function(requested_led, red, green, blue) { // This will set a single LED a given BGRb Color
         if(this.debug) console.log('Hooloovoo: Setting Pixel ['+requested_led+'] RGB to: r['+red+'] g['+green+'] b['+blue+']');
@@ -94,7 +111,7 @@ hooloovoo.prototype = {
     // Set BGRb Values - where all the actual work is done
     set_pixel_BGRb: function(requested_led, blue, green, red, brightness) { // This will set a single LED a given BGRb Color
         if(requested_led > this.led_length) {
-            console.log("Hooloovoo: You can't change a pixel that doesn't exist! - Pixel requested: "+requested_led);   
+            console.log("Hooloovoo: You can't change a pixel that doesn't exist! - Pixel requested: "+requested_led);
             return false;
         }
         var current_led = 4 + (requested_led * 4) // Start frame, plus the given LED number = bit position
